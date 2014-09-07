@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <declare-styleable name="CurtainListView">
+    <attr name="curtain_view_id" format="reference" />
+    <attr name="handle_view_id" format="reference" />
+    <attr name="curtain_view_height" format="dimension" />
+    <attr name="handle_view_height" format="dimension" />
+  </declare-styleable>
+</resources>
