@@ -1,16 +1,19 @@
 package com.bigstar.curtainlistview;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.os.Handler;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.*;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
+import com.nineoldandroids.view.ViewPropertyAnimator;
 
 
 public class BaseCurtainListView extends RelativeLayout {
@@ -64,6 +67,10 @@ public class BaseCurtainListView extends RelativeLayout {
         ViewGroup.LayoutParams.MATCH_PARENT));
     listView.setOnTouchListener(listTouchListener);
     listView.setOnScrollListener(scrollListener);
+    curtainHeaderView = new View(context);
+    handleHeaderView = new View(context);
+    listView.addHeaderView(curtainHeaderView);
+    listView.addHeaderView(handleHeaderView);
     initAttrs(attrs);
   }
 
@@ -78,20 +85,35 @@ public class BaseCurtainListView extends RelativeLayout {
 
   @Override
   protected void onFinishInflate() {
-    super.onFinishInflate();
     Log.v(TAG, "onFinishInflate");
+    super.onFinishInflate();
     curtainView = findViewById(curtainViewId);
     handleView = findViewById(handleViewId);
+    handleView.setOnTouchListener(handleTouchListener);
+    addView(listView, 0);
   }
 
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    Log.v(TAG, "onMeasure");
     super.onMeasure(widthMeasureSpec, heightMeasureSpec);
   }
 
   @Override
   protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     super.onLayout(changed, left, top, right, bottom);
+    if(curtainHeaderView.getHeight() != curtainView.getHeight()) {
+      AbsListView.LayoutParams params = new AbsListView.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, curtainView.getHeight());
+      curtainHeaderView.setLayoutParams(params);
+    }
+
+    if(handleHeaderView.getHeight() != handleView.getHeight()) {
+      AbsListView.LayoutParams params = new AbsListView.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, handleView.getHeight());
+      handleHeaderView.setLayoutParams(params);
+    }
+
+    curtainView.layout(0, 0, right, curtainView.getHeight());
+    handleView.layout(0, curtainView.getHeight(), right, curtainView.getHeight() + handleView.getHeight());
   }
 
   private void setScrolling() {
@@ -118,6 +140,15 @@ public class BaseCurtainListView extends RelativeLayout {
   public void minimize() {
     isMaximized = false;
     isForceMaximized = false;
+    listView.post(new Runnable() {
+      @Override
+      public void run() {
+        listView.clearFocus();
+        listView.requestFocusFromTouch();
+        listView.smoothScrollToPositionFromTop(0, -curtainHeaderView.getHeight());
+        listView.requestFocus();
+      }
+    });
   }
 
   /**
@@ -126,6 +157,15 @@ public class BaseCurtainListView extends RelativeLayout {
   public void maximize() {
     isMaximized = true;
     isForceMaximized = false;
+    listView.post(new Runnable() {
+      @Override
+      public void run() {
+        listView.clearFocus();
+        listView.requestFocusFromTouch();
+        listView.smoothScrollToPositionFromTop(0, 0);
+        listView.requestFocus();
+      }
+    });
   }
 
   /**
@@ -134,6 +174,8 @@ public class BaseCurtainListView extends RelativeLayout {
   public void forceMinimize() {
     isMaximized = false;
     isForceMaximized = false;
+    ViewPropertyAnimator.animate(curtainView).setDuration(TRANSFER_DURATION).translationY(-curtainHeaderView.getHeight());
+    ViewPropertyAnimator.animate(handleView).setDuration(TRANSFER_DURATION).translationY(-curtainHeaderView.getHeight());
     setScrolling();
   }
 
@@ -143,6 +185,8 @@ public class BaseCurtainListView extends RelativeLayout {
   public void forceMaximize() {
     isMaximized = true;
     isForceMaximized = true;
+    ViewPropertyAnimator.animate(curtainView).setDuration(TRANSFER_DURATION).translationY(0);
+    ViewPropertyAnimator.animate(handleView).setDuration(TRANSFER_DURATION).translationY(0);
     setScrolling();
   }
 
@@ -212,7 +256,6 @@ public class BaseCurtainListView extends RelativeLayout {
 
   public void addFooterView(View footer) {
     if (footer == null) {
-
     }
   }
 
@@ -220,7 +263,6 @@ public class BaseCurtainListView extends RelativeLayout {
     listView.setAdapter(adapter);
   }
 
-  @TargetApi(11)
   private void setCurtainTranslationY(float translationY) {
     if(curtainView == null) {
       return;
@@ -229,7 +271,6 @@ public class BaseCurtainListView extends RelativeLayout {
     curtainView.setTranslationY(translationY);
   }
 
-  @TargetApi(11)
   private void setHandleTranslationY(float translationY) {
     if(handleView == null) {
       return;
@@ -238,7 +279,6 @@ public class BaseCurtainListView extends RelativeLayout {
     handleView.setTranslationY(translationY);
   }
 
-  @TargetApi(11)
   private void setBothTranslationY(float translationY) {
     setCurtainTranslationY(translationY);
     setHandleTranslationY(translationY);
@@ -251,7 +291,7 @@ public class BaseCurtainListView extends RelativeLayout {
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-      if (isForceMaximized || isLocked || isScrolling) {
+      if ((isMaximized && !isForceMaximized) || isLocked || isScrolling) {
         return false;
       }
 
@@ -362,6 +402,10 @@ public class BaseCurtainListView extends RelativeLayout {
 
     @Override
     public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+      if(curtainView == null || curtainHeaderView == null) {
+        Log.v(TAG, "curtainView or curtainHeaderView is null");
+        return;
+      }
       View topChild = view.getChildAt(0);
 
       int topOffset = 0;
@@ -385,6 +429,7 @@ public class BaseCurtainListView extends RelativeLayout {
 
       int curtainHeaderTop = Math.abs(curtainHeaderView.getTop());
       dyScroll = curtainHeaderTop - previousCurtainHeaderTop;
+      previousCurtainHeaderTop = curtainHeaderTop;
 
       if(isForceMaximized) {
         if(curtainHeaderTop == 0) {
