@@ -23,7 +23,7 @@ public class BaseCurtainListView extends RelativeLayout {
     SCROLL_TO_TOP, SCROLL_TO_BOTTOM, SCROLL_SLOWLY
   }
 
-  private final int SCROLL_MIN_VELOCITY = 30;
+  private final int SCROLL_MIN_VELOCITY = 15;
 
   private int TRANSFER_DURATION = 200;
 
@@ -372,7 +372,7 @@ public class BaseCurtainListView extends RelativeLayout {
         return true;
       }
 
-      if(dyHandle < -SCROLL_MIN_VELOCITY + 10) {
+      if(dyHandle < -SCROLL_MIN_VELOCITY) {
         if(listView.getFirstVisiblePosition() == 0 && handleHeaderView.getBottom() > handleHeaderView.getHeight()) {
           minimize();
         }
@@ -403,7 +403,7 @@ public class BaseCurtainListView extends RelativeLayout {
         return true;
       }
 
-      if(dyHandle > SCROLL_MIN_VELOCITY - 10) {
+      if(dyHandle > SCROLL_MIN_VELOCITY) {
         forceMaximize();
         dyHandle = 0;
         return true;
