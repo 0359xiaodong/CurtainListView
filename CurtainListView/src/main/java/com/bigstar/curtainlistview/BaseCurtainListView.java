@@ -1,16 +1,20 @@
 package com.bigstar.curtainlistview;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.os.Handler;
 import android.util.AttributeSet;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.*;
+import android.util.Log;
+import android.view.*;
+import android.widget.AbsListView;
+import android.widget.BaseAdapter;
+import android.widget.ListView;
+import android.widget.RelativeLayout;
 
 
 public class BaseCurtainListView extends RelativeLayout {
+  private final String TAG = "CurtainListView";
 
   public enum SCROLL_STATE {
     SCROLL_TO_TOP, SCROLL_TO_BOTTOM, SCROLL_SLOWLY
@@ -33,8 +37,8 @@ public class BaseCurtainListView extends RelativeLayout {
   private View handleHeaderView;
 
   private int distanceHandle;
-  private int dyHandle;
   private int distanceScroll;
+  private float dyHandle;
   private int dyScroll;
 
   private boolean isLocked = false;
@@ -58,6 +62,8 @@ public class BaseCurtainListView extends RelativeLayout {
     listView.setLayoutParams(
       new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
         ViewGroup.LayoutParams.MATCH_PARENT));
+    listView.setOnTouchListener(listTouchListener);
+    listView.setOnScrollListener(scrollListener);
     initAttrs(attrs);
   }
 
@@ -65,14 +71,27 @@ public class BaseCurtainListView extends RelativeLayout {
     TypedArray ta = getContext().obtainStyledAttributes(attrs, R.styleable.CurtainListView);
     curtainViewId = ta.getResourceId(R.styleable.CurtainListView_curtain_view_id, R.id.curtain_view);
     handleViewId = ta.getResourceId(R.styleable.CurtainListView_handle_view_id, R.id.handle_view);
+    curtainHeight = ta.getDimensionPixelSize(R.styleable.CurtainListView_curtain_view_height, -1);
+    handleHeight = ta.getDimensionPixelSize(R.styleable.CurtainListView_handle_view_height, -1);
     ta.recycle();
   }
 
   @Override
   protected void onFinishInflate() {
     super.onFinishInflate();
+    Log.v(TAG, "onFinishInflate");
     curtainView = findViewById(curtainViewId);
     handleView = findViewById(handleViewId);
+  }
+
+  @Override
+  protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+  }
+
+  @Override
+  protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+    super.onLayout(changed, left, top, right, bottom);
   }
 
   private void setScrolling() {
@@ -86,7 +105,7 @@ public class BaseCurtainListView extends RelativeLayout {
   }
 
   private void scrollStateChanged(int newScrollOffset, int oldScrollOffset) {
-    if(newScrollOffset > oldScrollOffset) {
+    if (newScrollOffset > oldScrollOffset) {
       scrollState = SCROLL_STATE.SCROLL_TO_BOTTOM;
     } else {
       scrollState = SCROLL_STATE.SCROLL_TO_TOP;
@@ -201,42 +220,240 @@ public class BaseCurtainListView extends RelativeLayout {
     listView.setAdapter(adapter);
   }
 
+  @TargetApi(11)
+  private void setCurtainTranslationY(float translationY) {
+    if(curtainView == null) {
+      return;
+    }
+
+    curtainView.setTranslationY(translationY);
+  }
+
+  @TargetApi(11)
+  private void setHandleTranslationY(float translationY) {
+    if(handleView == null) {
+      return;
+    }
+
+    handleView.setTranslationY(translationY);
+  }
+
+  @TargetApi(11)
+  private void setBothTranslationY(float translationY) {
+    setCurtainTranslationY(translationY);
+    setHandleTranslationY(translationY);
+  }
+
   private View.OnTouchListener handleTouchListener = new View.OnTouchListener() {
 
     private float previousRawY = 0f;
     private float distance = 0f;
+
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-      if(isForceMaximized || isLocked) {
+      if (isForceMaximized || isLocked || isScrolling) {
         return false;
       }
 
-      if(event.getAction() == MotionEvent.ACTION_DOWN) {
+      if (event.getAction() == MotionEvent.ACTION_DOWN) {
         previousRawY = event.getRawY();
+        distance = 0f;
       }
 
-      if(event.getAction() == MotionEvent.ACTION_MOVE) {
-        distance = event.getRawY() - previousRawY;
+      if (event.getAction() == MotionEvent.ACTION_MOVE) {
+        float newDistance = event.getRawY() - previousRawY;
+        dyHandle = newDistance - distance;
+        distance = newDistance;
+
+        return isForceMaximized ? moveHandleInMaximized() : moveHandleInMinimized();
       }
 
-      if(event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
-
+      if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+        return isForceMaximized ? actionUpInMaximized() : actionUpInMinimized();
       }
 
       return true;
     }
+
+    private boolean moveHandleInMaximized() {
+      if(distance > 0) {
+        return true;
+      }
+
+      int curtainHeaderHeight = curtainHeaderView.getHeight();
+      if(Math.abs(distance) > curtainHeaderHeight) {
+        return true;
+      }
+
+      float handleBottom = curtainHeaderView.getHeight() + handleHeaderView.getHeight() + distance;
+      float handleHeaderBottom = handleHeaderView.getBottom();
+
+      if(handleBottom < handleHeaderBottom) {
+        minimize();
+        isForceMaximized = false;
+        return false;
+      }
+
+      setBothTranslationY(distance);
+      return true;
+    }
+
+    private boolean moveHandleInMinimized() {
+      if(distance < 0) {
+        return true;
+      }
+
+      int curtainHeaderHeight = curtainHeaderView.getHeight();
+      if(distance - curtainHeaderHeight > 0) {
+        return true;
+      }
+
+      setBothTranslationY(distance - curtainHeaderHeight);
+      return true;
+    }
+
+    private boolean actionUpInMaximized() {
+      if(distance > 0) {
+        forceMaximize();
+        return true;
+      }
+
+      distance = Math.abs(distance);
+      int curtainHeaderHeight = curtainHeaderView.getHeight();
+      if(distance < curtainHeaderHeight / 2) {
+        forceMaximize();
+        return true;
+      }
+
+      if(listView.getFirstVisiblePosition() == 0 && handleHeaderView.getBottom() > handleHeaderView.getHeight()) {
+        minimize();
+      }
+
+      forceMinimize();
+      return true;
+    }
+
+    private boolean actionUpInMinimized() {
+      if(distance  < 0) {
+        forceMinimize();
+        return true;
+      }
+
+      distance = Math.abs(distance);
+      int curtainHeaderHeight = curtainHeaderView.getHeight();
+      if(distance < curtainHeaderHeight / 2) {
+        forceMinimize();
+        return true;
+      }
+
+      forceMaximize();
+      return true;
+    }
+
   };
 
   private AbsListView.OnScrollListener scrollListener = new AbsListView.OnScrollListener() {
+
+    private int previousCurtainHeaderTop = 0;
+    private int previousTopOffset = 0;
+
     @Override
     public void onScrollStateChanged(AbsListView view, int scrollState) {}
 
     @Override
     public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+      View topChild = view.getChildAt(0);
 
+      int topOffset = 0;
+      if (topChild == null) {
+        topOffset = 0;
+      } else {
+        topOffset = -topChild.getTop() + view.getFirstVisiblePosition() * topChild.getHeight();
+      }
+
+      if (Math.abs(topOffset - previousTopOffset) >= SCROLL_MIN_VELOCITY) {
+        scrollStateChanged(topOffset, previousTopOffset);
+      } else {
+        scrollState = SCROLL_STATE.SCROLL_SLOWLY;
+      }
+
+      previousTopOffset = topOffset;
+
+      if(isLocked || isScrolling) {
+        return;
+      }
+
+      int curtainHeaderTop = Math.abs(curtainHeaderView.getTop());
+      dyScroll = curtainHeaderTop - previousCurtainHeaderTop;
+
+      if(isForceMaximized) {
+        if(curtainHeaderTop == 0) {
+          isForceMaximized = false;
+          isMaximized = true;
+          return;
+        }
+
+        if(scrollState.equals(SCROLL_STATE.SCROLL_TO_BOTTOM)) {
+          forceMinimize();
+          return;
+        }
+        return;
+      }
+
+      if(firstVisibleItem == 0) {
+        isForceMaximized = false;
+        isMaximized = true;
+        setBothTranslationY(- curtainHeaderTop);
+        return;
+      }
+
+      isMaximized = false;
+      int curtainHeaderHeight = curtainHeaderView.getHeight();
+      setBothTranslationY(-curtainHeaderHeight);
     }
   };
 
+  private View.OnTouchListener listTouchListener = new View.OnTouchListener() {
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+      if(event.getAction() != MotionEvent.ACTION_UP) {
+        return false;
+      }
+
+      if(isLocked || isScrolling) {
+        return false;
+      }
+
+      if(listView.getFirstVisiblePosition() > 0) {
+        return false;
+      }
+
+      if(dyScroll < -SCROLL_MIN_VELOCITY) {
+        Log.v(TAG, "Maximize by velocity");
+        maximize();
+        return false;
+      }
+
+      if(dyScroll > SCROLL_MIN_VELOCITY) {
+        Log.v(TAG, "Minimize by velocity");
+        minimize();
+        return false;
+      }
+
+      int curtainHeaderTop = Math.abs(curtainHeaderView.getTop());
+      int curtainHeaderHeight = curtainHeaderView.getHeight();
+
+      if(curtainHeaderTop < curtainHeaderHeight / 2) {
+        Log.v(TAG, "Maximize");
+        maximize();
+      } else {
+        Log.v(TAG, "Minimize");
+        minimize();
+      }
+
+      return false;
+    }
+  };
 
 
 }
