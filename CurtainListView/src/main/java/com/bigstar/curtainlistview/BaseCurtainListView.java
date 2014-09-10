@@ -39,7 +39,7 @@ public class BaseCurtainListView extends RelativeLayout {
   private View curtainHeaderView;
   private View handleHeaderView;
 
-  private int distanceHandle;
+  private float distanceHandle;
   private int distanceScroll;
   private float dyHandle;
   private int dyScroll;
@@ -208,6 +208,14 @@ public class BaseCurtainListView extends RelativeLayout {
    */
   public void lockCurtain() {
     isLocked = true;
+    if(isForceMaximized) {
+      actionUpInMaximized();
+    } else {
+      actionUpInMinimized();
+    }
+
+    distanceHandle = 0;
+    dyHandle = 0;
   }
 
   /**
@@ -234,42 +242,47 @@ public class BaseCurtainListView extends RelativeLayout {
   }
 
   /**
-   * set CurtainView
-   */
-  public void setCurtainView(View curtainView) {
-    //TODO update curtainView
-  }
-
-  /**
    * set CurtainViewHeight
    */
   public void setCurtainViewHeight(int curtainViewHeight) {
-
-  }
-
-  /**
-   * set HandleView
-   */
-  public void setHandleView(View handleView) {
-    //TODO update handleView
+    curtainHeight = curtainViewHeight;
+    RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) curtainView.getLayoutParams();
+    params.height = curtainHeight;
+    curtainView.setLayoutParams(params);
   }
 
   /**
    * set HandleViewHeight
    */
   public void setHandleViewHeight(int handleViewHeight) {
-
+    handleHeight = handleViewHeight;
+    RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) handleView.getLayoutParams();
+    params.height = handleHeight;
+    handleView.setLayoutParams(params);
   }
 
   public void addHeaderView(View header) {
     if (header == null) {
-
+      throw new NullPointerException("header must not be null");
     }
+
+    if(listView.getAdapter() != null) {
+      throw new IllegalStateException("addHeaderView must use before setAdapter");
+    }
+
+    listView.addHeaderView(header);
   }
 
   public void addFooterView(View footer) {
     if (footer == null) {
+      throw new NullPointerException("footer must not be null");
     }
+
+    if(listView.getAdapter() != null) {
+      throw new IllegalStateException("addFooterView must use before setAdapter");
+    }
+
+    listView.addFooterView(footer);
   }
 
   public void setAdapter(BaseAdapter adapter) {
@@ -300,7 +313,6 @@ public class BaseCurtainListView extends RelativeLayout {
   private View.OnTouchListener handleTouchListener = new View.OnTouchListener() {
 
     private float previousRawY = 0f;
-    private float distance = 0f;
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
@@ -310,13 +322,13 @@ public class BaseCurtainListView extends RelativeLayout {
 
       if (event.getAction() == MotionEvent.ACTION_DOWN) {
         previousRawY = event.getRawY();
-        distance = 0f;
+        distanceHandle = 0f;
       }
 
       if (event.getAction() == MotionEvent.ACTION_MOVE) {
         float newDistance = event.getRawY() - previousRawY;
-        dyHandle = newDistance - distance;
-        distance = newDistance;
+        dyHandle = newDistance - distanceHandle;
+        distanceHandle = newDistance;
 
         return isForceMaximized ? moveHandleInMaximized() : moveHandleInMinimized();
       }
@@ -330,16 +342,16 @@ public class BaseCurtainListView extends RelativeLayout {
     }
 
     private boolean moveHandleInMaximized() {
-      if(distance > 0) {
+      if(distanceHandle > 0) {
         return true;
       }
 
       int curtainHeaderHeight = curtainHeaderView.getHeight();
-      if(Math.abs(distance) > curtainHeaderHeight) {
+      if(Math.abs(distanceHandle) > curtainHeaderHeight) {
         return true;
       }
 
-      float handleBottom = curtainHeaderView.getHeight() + handleHeaderView.getHeight() + distance;
+      float handleBottom = curtainHeaderView.getHeight() + handleHeaderView.getHeight() + distanceHandle;
       float handleHeaderBottom = handleHeaderView.getBottom();
 
       if(handleBottom < handleHeaderBottom) {
@@ -348,79 +360,78 @@ public class BaseCurtainListView extends RelativeLayout {
         return false;
       }
 
-      setBothTranslationY(distance);
+      setBothTranslationY(distanceHandle);
       return true;
     }
 
     private boolean moveHandleInMinimized() {
-      if(distance < 0) {
+      if(distanceHandle < 0) {
         return true;
       }
 
       int curtainHeaderHeight = curtainHeaderView.getHeight();
-      if(distance - curtainHeaderHeight > 0) {
+      if(distanceHandle - curtainHeaderHeight > 0) {
         return true;
       }
 
-      setBothTranslationY(distance - curtainHeaderHeight);
+      setBothTranslationY(distanceHandle - curtainHeaderHeight);
+      return true;
+    }
+  };
+
+  public boolean actionUpInMaximized() {
+    if(distanceHandle > 0) {
+      forceMaximize();
       return true;
     }
 
-    private boolean actionUpInMaximized() {
-      if(distance > 0) {
-        forceMaximize();
-        return true;
-      }
-
-      if(dyHandle < -SCROLL_MIN_VELOCITY) {
-        if(listView.getFirstVisiblePosition() == 0 && handleHeaderView.getBottom() > handleHeaderView.getHeight()) {
-          minimize();
-        }
-
-        forceMinimize();
-        dyHandle = 0;
-        return true;
-      }
-
-      distance = Math.abs(distance);
-      int curtainHeaderHeight = curtainHeaderView.getHeight();
-      if(distance < curtainHeaderHeight / 2) {
-        forceMaximize();
-        return true;
-      }
-
+    if(dyHandle < -SCROLL_MIN_VELOCITY) {
       if(listView.getFirstVisiblePosition() == 0 && handleHeaderView.getBottom() > handleHeaderView.getHeight()) {
         minimize();
       }
 
       forceMinimize();
+      dyHandle = 0;
       return true;
     }
 
-    private boolean actionUpInMinimized() {
-      if(distance  < 0) {
-        forceMinimize();
-        return true;
-      }
-
-      if(dyHandle > SCROLL_MIN_VELOCITY) {
-        forceMaximize();
-        dyHandle = 0;
-        return true;
-      }
-
-      distance = Math.abs(distance);
-      int curtainHeaderHeight = curtainHeaderView.getHeight();
-      if(distance < curtainHeaderHeight / 2) {
-        forceMinimize();
-        return true;
-      }
-
+    distanceHandle = Math.abs(distanceHandle);
+    int curtainHeaderHeight = curtainHeaderView.getHeight();
+    if(distanceHandle < curtainHeaderHeight / 2) {
       forceMaximize();
       return true;
     }
 
-  };
+    if(listView.getFirstVisiblePosition() == 0 && handleHeaderView.getBottom() > handleHeaderView.getHeight()) {
+      minimize();
+    }
+
+    forceMinimize();
+    return true;
+  }
+
+  public boolean actionUpInMinimized() {
+    if(distanceHandle  < 0) {
+      forceMinimize();
+      return true;
+    }
+
+    if(dyHandle > SCROLL_MIN_VELOCITY) {
+      forceMaximize();
+      dyHandle = 0;
+      return true;
+    }
+
+    distanceHandle = Math.abs(distanceHandle);
+    int curtainHeaderHeight = curtainHeaderView.getHeight();
+    if(distanceHandle < curtainHeaderHeight / 2) {
+      forceMinimize();
+      return true;
+    }
+
+    forceMaximize();
+    return true;
+  }
 
   private AbsListView.OnScrollListener scrollListener = new AbsListView.OnScrollListener() {
 
@@ -445,7 +456,7 @@ public class BaseCurtainListView extends RelativeLayout {
         topOffset = -topChild.getTop() + view.getFirstVisiblePosition() * topChild.getHeight();
       }
 
-      if (Math.abs(topOffset - previousTopOffset) >= SCROLL_MIN_VELOCITY) {
+      if (Math.abs(topOffset - previousTopOffset) >= SCROLL_MIN_VELOCITY * 2) {
         scrollStateChanged(topOffset, previousTopOffset);
       } else {
         scrollState = SCROLL_STATE.SCROLL_SLOWLY;
@@ -453,7 +464,7 @@ public class BaseCurtainListView extends RelativeLayout {
 
       previousTopOffset = topOffset;
 
-      if(isLocked || isScrolling) {
+      if((isMaximized && isLocked) || isScrolling) {
         return;
       }
 
@@ -462,22 +473,30 @@ public class BaseCurtainListView extends RelativeLayout {
       previousCurtainHeaderTop = curtainHeaderTop;
 
       if(isForceMaximized) {
+        Log.v(TAG, "isForceMaximized");
         if(curtainHeaderTop == 0) {
           isForceMaximized = false;
           isMaximized = true;
           return;
         }
 
+        if(firstVisibleItem <= 1) {
+//          unlockCurtain();
+          return;
+        }
+
         if(scrollState.equals(SCROLL_STATE.SCROLL_TO_BOTTOM)) {
+          Log.e(TAG, "isForceMaximized");
           forceMinimize();
           return;
         }
         return;
       }
 
+      Log.v(TAG, "not maximized");
       if(firstVisibleItem == 0) {
         isForceMaximized = false;
-        isMaximized = true;
+        unlockCurtain();
         setBothTranslationY(- curtainHeaderTop);
         return;
       }
@@ -495,7 +514,7 @@ public class BaseCurtainListView extends RelativeLayout {
         return false;
       }
 
-      if(isLocked || isScrolling) {
+      if(isLocked || isScrolling || isForceMaximized) {
         return false;
       }
 
