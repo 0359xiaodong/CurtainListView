@@ -78,8 +78,8 @@ public class BaseCurtainListView extends RelativeLayout {
     TypedArray ta = getContext().obtainStyledAttributes(attrs, R.styleable.CurtainListView);
     curtainViewId = ta.getResourceId(R.styleable.CurtainListView_curtain_view_id, R.id.curtain_view);
     handleViewId = ta.getResourceId(R.styleable.CurtainListView_handle_view_id, R.id.handle_view);
-    curtainHeight = ta.getDimensionPixelSize(R.styleable.CurtainListView_curtain_view_height, -1);
-    handleHeight = ta.getDimensionPixelSize(R.styleable.CurtainListView_handle_view_height, -1);
+    curtainHeight = ta.getDimensionPixelSize(R.styleable.CurtainListView_curtain_view_height, 0);
+    handleHeight = ta.getDimensionPixelSize(R.styleable.CurtainListView_handle_view_height, 0);
     ta.recycle();
   }
 
@@ -89,6 +89,19 @@ public class BaseCurtainListView extends RelativeLayout {
     super.onFinishInflate();
     curtainView = findViewById(curtainViewId);
     handleView = findViewById(handleViewId);
+
+    if(curtainHeight != 0) {
+      RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) curtainView.getLayoutParams();
+      params.height = curtainHeight;
+      curtainView.setLayoutParams(params);
+    }
+
+    if(handleHeight != 0) {
+      RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) handleView.getLayoutParams();
+      params.height = handleHeight;
+      handleView.setLayoutParams(params);
+    }
+
     handleView.setOnTouchListener(handleTouchListener);
     addView(listView, 0);
   }
@@ -309,6 +322,7 @@ public class BaseCurtainListView extends RelativeLayout {
       }
 
       if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+        Log.v(TAG, "dyHandle : " + dyHandle);
         return isForceMaximized ? actionUpInMaximized() : actionUpInMinimized();
       }
 
@@ -358,6 +372,16 @@ public class BaseCurtainListView extends RelativeLayout {
         return true;
       }
 
+      if(dyHandle < -SCROLL_MIN_VELOCITY + 10) {
+        if(listView.getFirstVisiblePosition() == 0 && handleHeaderView.getBottom() > handleHeaderView.getHeight()) {
+          minimize();
+        }
+
+        forceMinimize();
+        dyHandle = 0;
+        return true;
+      }
+
       distance = Math.abs(distance);
       int curtainHeaderHeight = curtainHeaderView.getHeight();
       if(distance < curtainHeaderHeight / 2) {
@@ -376,6 +400,12 @@ public class BaseCurtainListView extends RelativeLayout {
     private boolean actionUpInMinimized() {
       if(distance  < 0) {
         forceMinimize();
+        return true;
+      }
+
+      if(dyHandle > SCROLL_MIN_VELOCITY - 10) {
+        forceMaximize();
+        dyHandle = 0;
         return true;
       }
 
