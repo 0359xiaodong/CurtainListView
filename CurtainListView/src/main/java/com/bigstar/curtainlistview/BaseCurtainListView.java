@@ -17,7 +17,7 @@ import com.nineoldandroids.view.ViewPropertyAnimator;
 
 
 public class BaseCurtainListView extends RelativeLayout {
-  private final String TAG = "CurtainListView";
+  private final String TAG = "BaseCurtainListView";
 
   public enum SCROLL_STATE {
     SCROLL_TO_TOP, SCROLL_TO_BOTTOM, SCROLL_SLOWLY
@@ -75,11 +75,11 @@ public class BaseCurtainListView extends RelativeLayout {
   }
 
   private void initAttrs(AttributeSet attrs) {
-    TypedArray ta = getContext().obtainStyledAttributes(attrs, R.styleable.CurtainListView);
-    curtainViewId = ta.getResourceId(R.styleable.CurtainListView_curtain_view_id, R.id.curtain_view);
-    handleViewId = ta.getResourceId(R.styleable.CurtainListView_handle_view_id, R.id.handle_view);
-    curtainHeight = ta.getDimensionPixelSize(R.styleable.CurtainListView_curtain_view_height, 0);
-    handleHeight = ta.getDimensionPixelSize(R.styleable.CurtainListView_handle_view_height, 0);
+    TypedArray ta = getContext().obtainStyledAttributes(attrs, R.styleable.BaseCurtainListView);
+    curtainViewId = ta.getResourceId(R.styleable.BaseCurtainListView_curtain_view_id, R.id.curtain_view);
+    handleViewId = ta.getResourceId(R.styleable.BaseCurtainListView_handle_view_id, R.id.handle_view);
+    curtainHeight = ta.getDimensionPixelSize(R.styleable.BaseCurtainListView_curtain_view_height, 0);
+    handleHeight = ta.getDimensionPixelSize(R.styleable.BaseCurtainListView_handle_view_height, 0);
     ta.recycle();
   }
 
@@ -473,7 +473,6 @@ public class BaseCurtainListView extends RelativeLayout {
       previousCurtainHeaderTop = curtainHeaderTop;
 
       if(isForceMaximized) {
-        Log.v(TAG, "isForceMaximized");
         if(curtainHeaderTop == 0) {
           isForceMaximized = false;
           isMaximized = true;
@@ -481,19 +480,16 @@ public class BaseCurtainListView extends RelativeLayout {
         }
 
         if(firstVisibleItem <= 1) {
-//          unlockCurtain();
           return;
         }
 
         if(scrollState.equals(SCROLL_STATE.SCROLL_TO_BOTTOM)) {
-          Log.e(TAG, "isForceMaximized");
           forceMinimize();
           return;
         }
         return;
       }
 
-      Log.v(TAG, "not maximized");
       if(firstVisibleItem == 0) {
         isForceMaximized = false;
         unlockCurtain();
