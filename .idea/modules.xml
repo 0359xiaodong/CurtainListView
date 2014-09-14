@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/CurtainListView.iml" filepath="$PROJECT_DIR$/CurtainListView.iml" />
       <module fileurl="file://$PROJECT_DIR$/CurtainListView/CurtainListView-CurtainListView.iml" filepath="$PROJECT_DIR$/CurtainListView/CurtainListView-CurtainListView.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Sample/Sample.iml" filepath="$PROJECT_DIR$/Sample/Sample.iml" />
     </modules>
   </component>
 </project>

@@ -1,1 +1,1 @@
-include ':CurtainListView'
+include ':CurtainListView', ':Sample'

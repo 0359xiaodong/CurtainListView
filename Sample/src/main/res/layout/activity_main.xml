@@ -1,0 +1,29 @@
+<RelativeLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent">
+
+  <com.bigstar.curtainlistview.BaseCurtainListView
+    xmlns:curtainlistview="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/clv_main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    curtainlistview:curtain_view_height="200dp"
+    curtainlistview:handle_view_height="200dp">
+
+    <ImageView
+      android:id="@+id/curtain_view"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:src="@drawable/ic_launcher"
+      android:background="#77234432" />
+
+    <View
+      android:id="@+id/handle_view"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:background="#77579975" />
+
+  </com.bigstar.curtainlistview.BaseCurtainListView>
+
+</RelativeLayout>

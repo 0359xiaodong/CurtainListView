@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.bigstar.curtainlistview.BaseCurtainListView
   xmlns:android="http://schemas.android.com/apk/res/android"
-  android:orientation="vertical"
+  xmlns:curtainlistview="http://schemas.android.com/apk/res-auto"
+  android:id="@+id/base_curtain_listview"
   android:layout_width="match_parent"
-  android:layout_height="match_parent">
+  android:layout_height="match_parent"
+  curtainlistview:curtain_view_id="@+id/curtain_view"
+  curtainlistview:handle_view_id="@+id/handle_view">
 
   <FrameLayout
     android:id="@+id/curtain_view"
