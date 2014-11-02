@@ -320,6 +320,10 @@ public class BaseCurtainListView extends RelativeLayout {
         return false;
       }
 
+      if(listView.getFirstVisiblePosition() == 0) {
+        return false;
+      }
+
       if (event.getAction() == MotionEvent.ACTION_DOWN) {
         previousRawY = event.getRawY();
         distanceHandle = 0f;
